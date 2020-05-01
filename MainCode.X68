@@ -1,6 +1,6 @@
                 ORG     $1000
-Input_1         DC.L $C4040000
-Input_2         DC.L $40001400
+Input_1         DC.L $40C80000
+Input_2         DC.L $40C80000
 Exponent_Bits   DC.W $8
 Product         DS.L 1
 Sign_1          DS.W 1
@@ -22,11 +22,12 @@ Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
                 LEA (26,A0),A1 **22 not 20 to only get the word
                 MOVE.W (A1),A1 **Original number address
                 MOVE.L (A1),D1 **Original number
+                CLR.L D2 **Clear D2
                 BPL.S POSITIVE
-                 
+                
 NEGATIVE        MOVEQ #1,D2 **Storing sign in register
             
-                
+                **Maybe instead of LEA directly move.L to register
 POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
                 MOVE.W (A1),A1 **Number of exponent bits address
                 MOVE.W (A1),D3 ** number of exponent bits
@@ -92,10 +93,80 @@ POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
  **TEST: Store bias in stack frame and reuse D2              
                
                
+               
+               
+               
+               
+               **Shouldn't forget to store registers
                 ORG $3000
-Subroutine_2    RTS
+Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
+                MOVEA.L (12,SP),A2 **Address of Input 2
+                MOVEA.L (8,SP),A3 **Address of number of exponent bits
+                          
+
+                **Preparing stack frame for subroutine 1     
+                LINK A0,#-20
+                MOVE.L A1,(-4,A0) **Address of input 1 on stack
+                MOVE.L A3,(-8,A0) **Address of number of exponent bits on stack
+                LEA (-12,A0),A4
+                MOVE.L A4,(-12,A0) **Storing sign in a word
+                LEA (-16,A0),A4
+                MOVE.L A4,(-16,A0) **Sotring exponent in large
+                LEA (-20,A0),A4
+                MOVE.L A4,(-20,A0) **Storing mantissa in large
                 
                 
+                BSR Subroutine_1
+                **Stack is now pointing at the top of the stack frame(Where the mantissa is)
+                
+                **Testing if subroutine performed correctly
+                MOVE.W (-12,A0),D0
+                MOVE.L (-16,A0),D1
+                MOVE.L (-20,A0),D2
+                
+                
+                LINK A5,#-20
+                MOVE.L A2,(-4,A5) **Address of input 2 on stack
+                MOVE.L A3,(-8,A5) **Address of number of exponent bits on stack
+                LEA (-12,A5),A4
+                MOVE.L A4,(-12,A5) **Storing sign in a word
+                LEA (-16,A5),A4
+                MOVE.L A4,(-16,A5) **Sotring exponent in large
+                LEA (-20,A5),A4
+                MOVE.L A4,(-20,A5) **Storing mantissa in large
+                
+                BSR Subroutine_1
+                
+                **Testing if subroutine performed correctly
+                MOVE.W (-12,A5),D3
+                MOVE.L (-16,A5),D4
+                MOVE.L (-20,A5),D5
+     
+
+
+
+
+
+
+
+
+
+
+                  RTS
+                
+                
+
+
+
+
+
+
+
+
+
+
+
+
 
 
                 ORG $400
@@ -119,12 +190,33 @@ START           MOVEA.L #$4000,A7
                 BSR Subroutine_1
                 LEA ($14,SP),SP
                 **Stack pointer back to normal
+                
+                
+                
+                **PART 2:
+                
+                
+                MOVEA.L #$5000,A7
+                PEA Input_1
+                PEA Input_2
+                PEA Exponent_Bits
+                PEA Product
+                BSR Subroutine_2
+                **Return stack as it was
+
+
+
+
+
 
                 END START
                 
                 
 
                         
+
+
+
 
 
 *~Font name~Courier New~
