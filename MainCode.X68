@@ -1,6 +1,6 @@
                 ORG     $1000
-Input_1         DC.L $40C80000
-Input_2         DC.L $40C80000
+Input_1         DC.L $40400000
+Input_2         DC.L $40400000
 Exponent_Bits   DC.W $8
 Product         DS.L 1
 Sign_1          DS.W 1
@@ -16,13 +16,13 @@ Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
 
                 MOVEM.L D1-D4/A1,-(SP) **should store the used ones
 
-
+                CLR.L D2 **Clear D2
                 **all LEA +4 since based on A0 (base of stackframe)
 
                 LEA (26,A0),A1 **22 not 20 to only get the word
                 MOVE.W (A1),A1 **Original number address
                 MOVE.L (A1),D1 **Original number
-                CLR.L D2 **Clear D2
+                
                 BPL.S POSITIVE
                 
 NEGATIVE        MOVEQ #1,D2 **Storing sign in register
@@ -120,11 +120,12 @@ Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
                 **Stack is now pointing at the top of the stack frame(Where the mantissa is)
                 
                 **Testing if subroutine performed correctly
-                MOVE.W (-12,A0),D0
-                MOVE.L (-16,A0),D1
-                MOVE.L (-20,A0),D2
+                MOVE.W (-12,A0),D0 **sign1
+                MOVE.L (-16,A0),D1 **exponent1
+                MOVE.L (-20,A0),D2 **mantissa1
                 
                 
+                **Preparing stack frame for subroutine 1 
                 LINK A5,#-20
                 MOVE.L A2,(-4,A5) **Address of input 2 on stack
                 MOVE.L A3,(-8,A5) **Address of number of exponent bits on stack
@@ -138,9 +139,34 @@ Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
                 BSR Subroutine_1
                 
                 **Testing if subroutine performed correctly
-                MOVE.W (-12,A5),D3
-                MOVE.L (-16,A5),D4
-                MOVE.L (-20,A5),D5
+                MOVE.W (-12,A5),D3 **sign2
+                MOVE.L (-16,A5),D4 **exponent2
+                MOVE.L (-20,A5),D5 **mantissa2
+                
+                **Logic of multiplication:
+                
+                EOR.B D0,D3
+                ADD.L D1,D4
+                MOVE.B #17,D7
+                ASR.L D7,D2
+                ASR.L D7,D5
+                
+                MULU D2,D5
+                BPL POS
+NEG             ASL.L #1,D5
+                ADD.L #1,D4
+                BRA ENDOFSUBROUTINE2
+                
+POS             ASL.L #2,D5
+                
+
+**Only thing left to do is reconstruct the product
+
+
+
+
+ENDOFSUBROUTINE2    UNLK A5
+                    UNLK A0
      
 
 
@@ -203,7 +229,8 @@ START           MOVEA.L #$4000,A7
                 PEA Product
                 BSR Subroutine_2
                 **Return stack as it was
-
+                LEA ($10,SP),SP
+                **Stack pointer back to normal
 
 
 
@@ -214,6 +241,8 @@ START           MOVEA.L #$4000,A7
                 
 
                         
+
+
 
 
 
