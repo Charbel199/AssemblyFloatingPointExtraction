@@ -1,6 +1,6 @@
                 ORG     $1000
-Input_1         DC.L $40400000
-Input_2         DC.L $40400000
+Input_1         DC.L $420B0000
+Input_2         DC.L $41AC0000
 Exponent_Bits   DC.W $8
 Product         DS.L 1
 Sign_1          DS.W 1
@@ -145,11 +145,23 @@ Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
                 
                 **Logic of multiplication:
                 
-                EOR.B D0,D3
+                EOR.B D0,D3 
                 ADD.L D1,D4
-                MOVE.B #17,D7
+                
+                **Shifted by 1 to add the hidden bit, then shifted by 16 (To take a word space)
+                ASR.L #1,D2
+                ASR.L #1,D5
+                OR.L #$80000000,D2
+                OR.L #$80000000,D5
+                
+                
+                
+                MOVE.B #16,D7
                 ASR.L D7,D2
                 ASR.L D7,D5
+                
+                
+                
                 
                 MULU D2,D5
                 BPL POS
@@ -161,11 +173,18 @@ POS             ASL.L #2,D5
                 
 
 **Only thing left to do is reconstruct the product
+** new test sign in D3, exponent in D4, mantissa in D5
+ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
+                              ASR.L D7,D5
+                              ADD.L #127,D4 **Make adding bias general
+                              MOVE.B #23,D7 **Shift by number of mantissa bits
+                              ASL.L D7,D4
+                              OR.L D4,D5
+                              ** sign still not done
+                              
+                              **Should store it in product location in memory
 
-
-
-
-ENDOFSUBROUTINE2    UNLK A5
+                    UNLK A5
                     UNLK A0
      
 
@@ -241,6 +260,9 @@ START           MOVEA.L #$4000,A7
                 
 
                         
+
+
+
 
 
 
