@@ -1,6 +1,6 @@
                 ORG     $1000
-Input_1         DC.L $3F000000
-Input_2         DC.L $3F000000
+Input_1         DC.L $c479d99a
+Input_2         DC.L $415bd70a
 Exponent_Bits   DC.W $8
 Product         DS.L 1
 Sign_1          DS.W 1
@@ -61,7 +61,7 @@ POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 
                         **          D2 has now the the bias MAYBE STORE IT IN LINK ?
                                                                                 
-                MOVE.L D1,-(SP) **Duplicating original number and storing it on the stack
+                MOVE.L D1,(-4,A0) **Duplicating original number and storing it in the stack frame
           
              
                 ADDQ #2,D3  **number of exponents bits + 1 (Sign)
@@ -74,7 +74,7 @@ POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 MOVE.L D1,(A1) **Mantissa stored
                 
                 
-                MOVE.L (SP)+,D1 **Fetching the original number duplicate from the stack
+                MOVE.L (-4,A0),D1 **Fetching the original number duplicate from the stack frame
                 
                 AND.L #$7FFFFFFF,D1 **Set MSB to 0 (For ASR)
                 ASR.L D4,D1 **Moving our exponent by the number of mantissa bits to the right
@@ -125,7 +125,7 @@ Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
                 **Stack is now pointing at the top of the stack frame(Where the mantissa is)
                 
                 **Testing if subroutine performed correctly
-                MOVE.L (-12,A0),D0 **sign1
+                MOVE.W (-12,A0),D0 **sign1
                 MOVE.L (-16,A0),D1 **exponent1
                 MOVE.L (-20,A0),D2 **mantissa1
                 
@@ -145,13 +145,13 @@ Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
                 BSR Subroutine_1
                 
                 **Testing if subroutine performed correctly
-                MOVE.L (-12,A5),D3 **sign2
+                MOVE.W (-12,A5),D3 **sign2
                 MOVE.L (-16,A5),D4 **exponent2
                 MOVE.L (-20,A5),D5 **mantissa2
                 
                 **Logic of multiplication:
                 
-                EOR.B D0,D3 
+                EOR.B D0,D3           
                 ADD.L D1,D4
                 
                 **Shifted by 1 to add the hidden bit, then shifted by 16 (To take a word space)
@@ -179,18 +179,40 @@ POS             ASL.L #2,D5
                 
 
 **Only thing left to do is reconstruct the product
-** new test sign in D3, exponent in D4, mantissa in D5
-ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
+** new sign in D3, exponent in D4, mantissa in D5
 
-                              ASR.L D7,D5
-                              ADD.L #127,D4 **Make adding bias general
-                              MOVE.B #23,D7 **Shift by number of mantissa bits
-                              ASL.L D7,D4
+
+ENDOFSUBROUTINE2              ASR.L #1,D5
+                              AND.L #$7FFFFFFF,D5
+                              MOVE.W (A3),D7 **D7 has become the number of exponent bits               
+                              ASR.L D7,D5   **Shifted by number of exponent bits + 1 in total 
+                              
+
+                              SUBQ #1,D7 ** D7 has become number of exponent bits - 1
+                              MOVEQ #1,D2 
+                              ASL.L D7,D2 **2^(number of exponent bits -1)-1
+                              SUB.L #1,D2 **D2 is the bias    
+
+
+                          
+                              ADD.L D2,D4 **Adding the bias to the exponent
+                              
+                              MOVEQ #30,D1
+                              SUB.L D7, D1 **30 - (number of exponent bits - 1) = number of mantissa bits
+                                            **D1 has now the number of mantissa bits
+
+                          
+                              ASL.L D1,D4
                               OR.L D4,D5
-                              ** sign still not done
+                             
+                              
+                              **Checking the sign
+                              TST.L D3
+                              BEQ STOREINMEMORY
+                              OR.L #$80000000,D5
                               
                               **Should store it in product location in memory
-                              LEA (A6),A6
+STOREINMEMORY                 LEA (A6),A6
                               MOVE.L D5,(A6)
                               UNLK A5
                               UNLK A0
@@ -270,6 +292,7 @@ START           MOVEA.L #$4000,A7
                 
 
                         
+
 
 
 
