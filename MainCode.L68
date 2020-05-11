@@ -1,10 +1,10 @@
 00000400 Starting Address
 Assembler used: EASy68K Editor/Assembler v5.16.01
-Created On: 5/2/2020 7:44:06 PM
+Created On: 5/11/2020 10:50:57 AM
 
 00001000                             1                  ORG     $1000
-00001000= 420B0000                   2  Input_1         DC.L $420B0000
-00001004= 41AC0000                   3  Input_2         DC.L $41AC0000
+00001000= 3F000000                   2  Input_1         DC.L $3F000000
+00001004= 3F000000                   3  Input_2         DC.L $3F000000
 00001008= 0008                       4  Exponent_Bits   DC.W $8
 0000100A                             5  Product         DS.L 1
 0000100E                             6  Sign_1          DS.W 1
@@ -23,7 +23,7 @@ Created On: 5/2/2020 7:44:06 PM
 00002008  4282                      19                  CLR.L D2 **Clear D2
 0000200A                            20                  **all LEA +4 since based on A0 (base of stackframe)
 0000200A                            21  
-0000200A  43E8 001A                 22                  LEA (26,A0),A1 **22 not 20 to only get the word
+0000200A  43E8 001A                 22                  LEA (26,A0),A1 **26 not 24to only get the word
 0000200E  3251                      23                  MOVE.W (A1),A1 **Original number address
 00002010  2211                      24                  MOVE.L (A1),D1 **Original number
 00002012                            25                  
@@ -32,13 +32,13 @@ Created On: 5/2/2020 7:44:06 PM
 00002014  7401                      28  NEGATIVE        MOVEQ #1,D2 **Storing sign in register
 00002016                            29              
 00002016                            30                  **Maybe instead of LEA directly move.L to register
-00002016  43E8 0016                 31  POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
+00002016  43E8 0016                 31  POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
 0000201A  3251                      32                  MOVE.W (A1),A1 **Number of exponent bits address
 0000201C  3611                      33                  MOVE.W (A1),D3 ** number of exponent bits
 0000201E                            34                  
 0000201E                            35          
 0000201E                            36                  
-0000201E  43E8 0012                 37                  LEA (18,A0),A1 **14 not 12 to only get the word
+0000201E  43E8 0012                 37                  LEA (18,A0),A1 **18 not 16 to only get the word
 00002022  3251                      38                  MOVE.W (A1),A1 **Address for sign
 00002024                            39            
 00002024                            40                  
@@ -63,7 +63,7 @@ Created On: 5/2/2020 7:44:06 PM
 0000202E  E7A2                      59                  ASL.L D3,D2 **2^(number of exponent bits -1)-1
 00002030  5382                      60                  SUB.L #1,D2 **D2 is the bias
 00002032                            61                  
-00002032                            62                          **          D2 has now the the bias
+00002032                            62                          **          D2 has now the the bias MAYBE STORE IT IN LINK ?
 00002032                            63                                                                                  
 00002032  2F01                      64                  MOVE.L D1,-(SP) **Duplicating original number and storing it on the stack
 00002034                            65            
@@ -84,7 +84,7 @@ Created On: 5/2/2020 7:44:06 PM
 00002048  E8A1                      80                  ASR.L D4,D1 **Moving our exponent by the number of mantissa bits to the right
 0000204A  9282                      81                  SUB.L D2,D1 **Removing the bias from it
 0000204C                            82                  
-0000204C  43E8 000E                 83                  LEA (14,A0),A1 **10 not 8 to only get the word
+0000204C  43E8 000E                 83                  LEA (14,A0),A1 **14 not 12 to only get the word
 00002050  3251                      84                  MOVE.W (A1),A1
 00002052                            85                  
 00002052  2281                      86                  MOVE.L D1,(A1) **Exponent stored
@@ -103,163 +103,173 @@ Created On: 5/2/2020 7:44:06 PM
 0000205C                            99                 
 0000205C                           100                 **Shouldn't forget to store registers
 00003000                           101                  ORG $3000
-00003000  226F 0010                102  Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
-00003004  246F 000C                103                  MOVEA.L (12,SP),A2 **Address of Input 2
-00003008  266F 0008                104                  MOVEA.L (8,SP),A3 **Address of number of exponent bits
-0000300C                           105                            
-0000300C                           106  
-0000300C                           107                  **Preparing stack frame for subroutine 1     
-0000300C  4E50 FFEC                108                  LINK A0,#-20
-00003010  2149 FFFC                109                  MOVE.L A1,(-4,A0) **Address of input 1 on stack
-00003014  214B FFF8                110                  MOVE.L A3,(-8,A0) **Address of number of exponent bits on stack
-00003018  49E8 FFF4                111                  LEA (-12,A0),A4
-0000301C  214C FFF4                112                  MOVE.L A4,(-12,A0) **Storing sign in a word
-00003020  49E8 FFF0                113                  LEA (-16,A0),A4
-00003024  214C FFF0                114                  MOVE.L A4,(-16,A0) **Sotring exponent in large
-00003028  49E8 FFEC                115                  LEA (-20,A0),A4
-0000302C  214C FFEC                116                  MOVE.L A4,(-20,A0) **Storing mantissa in large
-00003030                           117                  
-00003030                           118                  
-00003030  6100 EFCE                119                  BSR Subroutine_1
-00003034                           120                  **Stack is now pointing at the top of the stack frame(Where the mantissa is)
-00003034                           121                  
-00003034                           122                  **Testing if subroutine performed correctly
-00003034  3028 FFF4                123                  MOVE.W (-12,A0),D0 **sign1
-00003038  2228 FFF0                124                  MOVE.L (-16,A0),D1 **exponent1
-0000303C  2428 FFEC                125                  MOVE.L (-20,A0),D2 **mantissa1
-00003040                           126                  
-00003040                           127                  
-00003040                           128                  **Preparing stack frame for subroutine 1 
-00003040  4E55 FFEC                129                  LINK A5,#-20
-00003044  2B4A FFFC                130                  MOVE.L A2,(-4,A5) **Address of input 2 on stack
-00003048  2B4B FFF8                131                  MOVE.L A3,(-8,A5) **Address of number of exponent bits on stack
-0000304C  49ED FFF4                132                  LEA (-12,A5),A4
-00003050  2B4C FFF4                133                  MOVE.L A4,(-12,A5) **Storing sign in a word
-00003054  49ED FFF0                134                  LEA (-16,A5),A4
-00003058  2B4C FFF0                135                  MOVE.L A4,(-16,A5) **Sotring exponent in large
-0000305C  49ED FFEC                136                  LEA (-20,A5),A4
-00003060  2B4C FFEC                137                  MOVE.L A4,(-20,A5) **Storing mantissa in large
-00003064                           138                  
-00003064  6100 EF9A                139                  BSR Subroutine_1
-00003068                           140                  
-00003068                           141                  **Testing if subroutine performed correctly
-00003068  362D FFF4                142                  MOVE.W (-12,A5),D3 **sign2
-0000306C  282D FFF0                143                  MOVE.L (-16,A5),D4 **exponent2
-00003070  2A2D FFEC                144                  MOVE.L (-20,A5),D5 **mantissa2
-00003074                           145                  
-00003074                           146                  **Logic of multiplication:
-00003074                           147                  
-00003074  B103                     148                  EOR.B D0,D3 
-00003076  D881                     149                  ADD.L D1,D4
-00003078                           150                  
-00003078                           151                  **Shifted by 1 to add the hidden bit, then shifted by 16 (To take a word space)
-00003078  E282                     152                  ASR.L #1,D2
-0000307A  E285                     153                  ASR.L #1,D5
-0000307C  84BC 80000000            154                  OR.L #$80000000,D2
-00003082  8ABC 80000000            155                  OR.L #$80000000,D5
-00003088                           156                  
-00003088                           157                  
-00003088                           158                  
-00003088  1E3C 0010                159                  MOVE.B #16,D7
-0000308C  EEA2                     160                  ASR.L D7,D2
-0000308E  EEA5                     161                  ASR.L D7,D5
+00003000  48E7 7F7E                102  Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
+00003004                           103  
+00003004  226F 0044                104                  MOVEA.L (68,SP),A1 **Address of Input 1
+00003008  246F 0040                105                  MOVEA.L (64,SP),A2 **Address of Input 2
+0000300C  266F 003C                106                  MOVEA.L (60,SP),A3 **Address of number of exponent bits
+00003010  2C6F 0038                107                  MOVEA.L (56,SP),A6 **Address of product result
+00003014                           108                            
+00003014                           109  
+00003014                           110                  **Preparing stack frame for subroutine 1     
+00003014  4E50 FFEC                111                  LINK A0,#-20
+00003018                           112                
+00003018                           113                  
+00003018  2149 FFFC                114                  MOVE.L A1,(-4,A0) **Address of input 1 on stack
+0000301C  214B FFF8                115                  MOVE.L A3,(-8,A0) **Address of number of exponent bits on stack
+00003020  49E8 FFF4                116                  LEA (-12,A0),A4
+00003024  214C FFF4                117                  MOVE.L A4,(-12,A0) **Storing sign
+00003028  49E8 FFF0                118                  LEA (-16,A0),A4
+0000302C  214C FFF0                119                  MOVE.L A4,(-16,A0) **Sotring exponent
+00003030  49E8 FFEC                120                  LEA (-20,A0),A4
+00003034  214C FFEC                121                  MOVE.L A4,(-20,A0) **Storing mantissa
+00003038                           122                  
+00003038                           123                  
+00003038  6100 EFC6                124                  BSR Subroutine_1
+0000303C                           125                  **Stack is now pointing at the top of the stack frame(Where the mantissa is)
+0000303C                           126                  
+0000303C                           127                  **Testing if subroutine performed correctly
+0000303C  2028 FFF4                128                  MOVE.L (-12,A0),D0 **sign1
+00003040  2228 FFF0                129                  MOVE.L (-16,A0),D1 **exponent1
+00003044  2428 FFEC                130                  MOVE.L (-20,A0),D2 **mantissa1
+00003048                           131                  
+00003048                           132                  
+00003048                           133                  **Preparing stack frame for subroutine 1 
+00003048  4E55 FFEC                134                  LINK A5,#-20
+0000304C                           135                  
+0000304C  2B4A FFFC                136                  MOVE.L A2,(-4,A5) **Address of input 2 on stack
+00003050  2B4B FFF8                137                  MOVE.L A3,(-8,A5) **Address of number of exponent bits on stack
+00003054  49ED FFF4                138                  LEA (-12,A5),A4
+00003058  2B4C FFF4                139                  MOVE.L A4,(-12,A5) **Storing sign 
+0000305C  49ED FFF0                140                  LEA (-16,A5),A4
+00003060  2B4C FFF0                141                  MOVE.L A4,(-16,A5) **Sotring exponent 
+00003064  49ED FFEC                142                  LEA (-20,A5),A4
+00003068  2B4C FFEC                143                  MOVE.L A4,(-20,A5) **Storing mantissa 
+0000306C                           144                  
+0000306C  6100 EF92                145                  BSR Subroutine_1
+00003070                           146                  
+00003070                           147                  **Testing if subroutine performed correctly
+00003070  262D FFF4                148                  MOVE.L (-12,A5),D3 **sign2
+00003074  282D FFF0                149                  MOVE.L (-16,A5),D4 **exponent2
+00003078  2A2D FFEC                150                  MOVE.L (-20,A5),D5 **mantissa2
+0000307C                           151                  
+0000307C                           152                  **Logic of multiplication:
+0000307C                           153                  
+0000307C  B103                     154                  EOR.B D0,D3 
+0000307E  D881                     155                  ADD.L D1,D4
+00003080                           156                  
+00003080                           157                  **Shifted by 1 to add the hidden bit, then shifted by 16 (To take a word space)
+00003080  E282                     158                  ASR.L #1,D2
+00003082  E285                     159                  ASR.L #1,D5
+00003084  84BC 80000000            160                  OR.L #$80000000,D2
+0000308A  8ABC 80000000            161                  OR.L #$80000000,D5
 00003090                           162                  
 00003090                           163                  
 00003090                           164                  
-00003090                           165                  
-00003090  CAC2                     166                  MULU D2,D5
-00003092  6A00 000A                167                  BPL POS
-00003096  E385                     168  NEG             ASL.L #1,D5
-00003098  5284                     169                  ADD.L #1,D4
-0000309A  6000 0004                170                  BRA ENDOFSUBROUTINE2
-0000309E                           171                  
-0000309E  E585                     172  POS             ASL.L #2,D5
-000030A0                           173                  
-000030A0                           174  
-000030A0                           175  **Only thing left to do is reconstruct the product
-000030A0                           176  ** new test sign in D3, exponent in D4, mantissa in D5
-000030A0  1E3C 0009                177  ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
-000030A4  EEA5                     178                                ASR.L D7,D5
-000030A6  0684 0000007F            179                                ADD.L #127,D4 **Make adding bias general
-000030AC  1E3C 0017                180                                MOVE.B #23,D7 **Shift by number of mantissa bits
-000030B0  EFA4                     181                                ASL.L D7,D4
-000030B2  8A84                     182                                OR.L D4,D5
-000030B4                           183                                ** sign still not done
-000030B4                           184                                
-000030B4                           185                                **Should store it in product location in memory
-000030B4                           186  
-000030B4  4E5D                     187                      UNLK A5
-000030B6  4E58                     188                      UNLK A0
-000030B8                           189       
-000030B8                           190  
-000030B8                           191  
-000030B8                           192  
-000030B8                           193  
-000030B8                           194  
-000030B8                           195  
-000030B8                           196  
-000030B8                           197  
-000030B8                           198  
-000030B8                           199  
-000030B8  4E75                     200                    RTS
-000030BA                           201                  
-000030BA                           202                  
-000030BA                           203  
-000030BA                           204  
-000030BA                           205  
-000030BA                           206  
-000030BA                           207  
-000030BA                           208  
-000030BA                           209  
-000030BA                           210  
-000030BA                           211  
-000030BA                           212  
-000030BA                           213  
-000030BA                           214  
-000030BA                           215  
-000030BA                           216  
-00000400                           217                  ORG $400
-00000400                           218  
-00000400                           219  
-00000400  2E7C 00004000            220  START           MOVEA.L #$4000,A7
-00000406  4878 1000                221                  PEA Input_1
-0000040A  4878 1008                222                  PEA Exponent_Bits
-0000040E  4878 100E                223                  PEA Sign_1
-00000412  4878 1010                224                  PEA Exponent_1
-00000416  4878 1014                225                  PEA Mantissa_1
-0000041A                           226                  
-0000041A                           227                  **Testing if registers are still the same
-0000041A  223C 00012309            228                  MOVE.L #$12309,D1 
-00000420  243C 00001234            229                  MOVE.L #$1234,D2
-00000426  263C 00001234            230                  MOVE.L #$1234,D3
-0000042C  283C 00001234            231                  MOVE.L #$1234,D4
-00000432  227C 00001230            232                  MOVEA.L #$1230,A1
-00000438                           233                  
-00000438                           234                  
-00000438  6100 1BC6                235                  BSR Subroutine_1
-0000043C  4FEF 0014                236                  LEA ($14,SP),SP
-00000440                           237                  **Stack pointer back to normal
-00000440                           238                  
-00000440                           239                  
-00000440                           240                  
-00000440                           241                  **PART 2:
-00000440                           242                  
-00000440                           243                  
-00000440  2E7C 00005000            244                  MOVEA.L #$5000,A7
-00000446  4878 1000                245                  PEA Input_1
-0000044A  4878 1004                246                  PEA Input_2
-0000044E  4878 1008                247                  PEA Exponent_Bits
-00000452  4878 100A                248                  PEA Product
-00000456  6100 2BA8                249                  BSR Subroutine_2
-0000045A                           250                  **Return stack as it was
-0000045A  4FEF 0010                251                  LEA ($10,SP),SP
-0000045E                           252                  **Stack pointer back to normal
-0000045E                           253  
-0000045E                           254  
-0000045E                           255  
-0000045E                           256  
-0000045E                           257  
-0000045E                           258                  END START
+00003090  1E3C 0010                165                  MOVE.B #16,D7
+00003094  EEA2                     166                  ASR.L D7,D2
+00003096  EEA5                     167                  ASR.L D7,D5
+00003098                           168                  
+00003098                           169                  
+00003098                           170                  
+00003098                           171                  
+00003098  CAC2                     172                  MULU D2,D5
+0000309A  6A00 000A                173                  BPL POS
+0000309E  E385                     174  NEG             ASL.L #1,D5
+000030A0  5284                     175                  ADD.L #1,D4
+000030A2  6000 0004                176                  BRA ENDOFSUBROUTINE2
+000030A6                           177                  
+000030A6  E585                     178  POS             ASL.L #2,D5
+000030A8                           179                  
+000030A8                           180  
+000030A8                           181  **Only thing left to do is reconstruct the product
+000030A8                           182  ** new test sign in D3, exponent in D4, mantissa in D5
+000030A8  1E3C 0009                183  ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
+000030AC                           184  
+000030AC  EEA5                     185                                ASR.L D7,D5
+000030AE  0684 0000007F            186                                ADD.L #127,D4 **Make adding bias general
+000030B4  1E3C 0017                187                                MOVE.B #23,D7 **Shift by number of mantissa bits
+000030B8  EFA4                     188                                ASL.L D7,D4
+000030BA  8A84                     189                                OR.L D4,D5
+000030BC                           190                                ** sign still not done
+000030BC                           191                                
+000030BC                           192                                **Should store it in product location in memory
+000030BC  4DD6                     193                      LEA (A6),A6
+000030BE  2C85                     194                      MOVE.L D5,(A6)
+000030C0  4E5D                     195                      UNLK A5
+000030C2  4E58                     196                      UNLK A0
+000030C4  4CDF 7EFE                197                      MOVEM.L (SP)+,D1-D7/A1-A6
+000030C8                           198  
+000030C8                           199       
+000030C8                           200  
+000030C8                           201  
+000030C8                           202  
+000030C8                           203  
+000030C8                           204  
+000030C8                           205  
+000030C8                           206  
+000030C8                           207  
+000030C8                           208  
+000030C8                           209  
+000030C8  4E75                     210                    RTS
+000030CA                           211                  
+000030CA                           212                  
+000030CA                           213  
+000030CA                           214  
+000030CA                           215  
+000030CA                           216  
+000030CA                           217  
+000030CA                           218  
+000030CA                           219  
+000030CA                           220  
+000030CA                           221  
+000030CA                           222  
+000030CA                           223  
+000030CA                           224  
+000030CA                           225  
+000030CA                           226  
+00000400                           227                  ORG $400
+00000400                           228  
+00000400                           229  
+00000400  2E7C 00004000            230  START           MOVEA.L #$4000,A7
+00000406  4878 1000                231                  PEA Input_1
+0000040A  4878 1008                232                  PEA Exponent_Bits
+0000040E  4878 100E                233                  PEA Sign_1
+00000412  4878 1010                234                  PEA Exponent_1
+00000416  4878 1014                235                  PEA Mantissa_1
+0000041A                           236                  
+0000041A                           237                  **Testing if registers are still the same
+0000041A  223C 00012309            238                  MOVE.L #$12309,D1 
+00000420  243C 00001234            239                  MOVE.L #$1234,D2
+00000426  263C 00001234            240                  MOVE.L #$1234,D3
+0000042C  283C 00001234            241                  MOVE.L #$1234,D4
+00000432  227C 00001230            242                  MOVEA.L #$1230,A1
+00000438                           243                  
+00000438                           244                  
+00000438  6100 1BC6                245                  BSR Subroutine_1
+0000043C  4FEF 0014                246                  LEA ($14,SP),SP
+00000440                           247                  **Stack pointer back to normal
+00000440                           248                  
+00000440                           249                  
+00000440                           250                  
+00000440                           251                  **PART 2:
+00000440                           252                  
+00000440                           253                  
+00000440  2E7C 00005000            254                  MOVEA.L #$5000,A7
+00000446  4878 1000                255                  PEA Input_1
+0000044A  4878 1004                256                  PEA Input_2
+0000044E  4878 1008                257                  PEA Exponent_Bits
+00000452  4878 100A                258                  PEA Product
+00000456  6100 2BA8                259                  BSR Subroutine_2
+0000045A                           260                  **Return stack as it was
+0000045A  4FEF 0010                261                  LEA ($10,SP),SP
+0000045E                           262                  **Stack pointer back to normal
+0000045E                           263  
+0000045E                           264  
+0000045E                           265  
+0000045E                           266  
+0000045E                           267  
+0000045E                           268                  END START
 
 No errors detected
 No warnings generated
@@ -268,7 +278,7 @@ No warnings generated
 SYMBOL TABLE INFORMATION
 Symbol-name         Value
 -------------------------
-ENDOFSUBROUTINE2    30A0
+ENDOFSUBROUTINE2    30A8
 EXPONENT_1          1010
 EXPONENT_2          101A
 EXPONENT_BITS       1008
@@ -276,9 +286,9 @@ INPUT_1             1000
 INPUT_2             1004
 MANTISSA_1          1014
 MANTISSA_2          101E
-NEG                 3096
+NEG                 309E
 NEGATIVE            2014
-POS                 309E
+POS                 30A6
 POSITIVE            2016
 PRODUCT             100A
 SIGN_1              100E

@@ -1,6 +1,6 @@
                 ORG     $1000
-Input_1         DC.L $420B0000
-Input_2         DC.L $41AC0000
+Input_1         DC.L $3F000000
+Input_2         DC.L $3F000000
 Exponent_Bits   DC.W $8
 Product         DS.L 1
 Sign_1          DS.W 1
@@ -19,7 +19,7 @@ Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
                 CLR.L D2 **Clear D2
                 **all LEA +4 since based on A0 (base of stackframe)
 
-                LEA (26,A0),A1 **22 not 20 to only get the word
+                LEA (26,A0),A1 **26 not 24to only get the word
                 MOVE.W (A1),A1 **Original number address
                 MOVE.L (A1),D1 **Original number
                 
@@ -28,13 +28,13 @@ Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
 NEGATIVE        MOVEQ #1,D2 **Storing sign in register
             
                 **Maybe instead of LEA directly move.L to register
-POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
+POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 MOVE.W (A1),A1 **Number of exponent bits address
                 MOVE.W (A1),D3 ** number of exponent bits
                 
         
                 
-                LEA (18,A0),A1 **14 not 12 to only get the word
+                LEA (18,A0),A1 **18 not 16 to only get the word
                 MOVE.W (A1),A1 **Address for sign
           
                 
@@ -59,7 +59,7 @@ POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
                 ASL.L D3,D2 **2^(number of exponent bits -1)-1
                 SUB.L #1,D2 **D2 is the bias
                 
-                        **          D2 has now the the bias
+                        **          D2 has now the the bias MAYBE STORE IT IN LINK ?
                                                                                 
                 MOVE.L D1,-(SP) **Duplicating original number and storing it on the stack
           
@@ -80,7 +80,7 @@ POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
                 ASR.L D4,D1 **Moving our exponent by the number of mantissa bits to the right
                 SUB.L D2,D1 **Removing the bias from it
                 
-                LEA (14,A0),A1 **10 not 8 to only get the word
+                LEA (14,A0),A1 **14 not 12 to only get the word
                 MOVE.W (A1),A1
                 
                 MOVE.L D1,(A1) **Exponent stored
@@ -99,47 +99,53 @@ POSITIVE        LEA (22,A0),A1 **18 not 16 to only get the word
                
                **Shouldn't forget to store registers
                 ORG $3000
-Subroutine_2    MOVEA.L (16,SP),A1 **Address of Input 1
-                MOVEA.L (12,SP),A2 **Address of Input 2
-                MOVEA.L (8,SP),A3 **Address of number of exponent bits
+Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
+
+                MOVEA.L (68,SP),A1 **Address of Input 1
+                MOVEA.L (64,SP),A2 **Address of Input 2
+                MOVEA.L (60,SP),A3 **Address of number of exponent bits
+                MOVEA.L (56,SP),A6 **Address of product result
                           
 
                 **Preparing stack frame for subroutine 1     
                 LINK A0,#-20
+              
+                
                 MOVE.L A1,(-4,A0) **Address of input 1 on stack
                 MOVE.L A3,(-8,A0) **Address of number of exponent bits on stack
                 LEA (-12,A0),A4
-                MOVE.L A4,(-12,A0) **Storing sign in a word
+                MOVE.L A4,(-12,A0) **Storing sign
                 LEA (-16,A0),A4
-                MOVE.L A4,(-16,A0) **Sotring exponent in large
+                MOVE.L A4,(-16,A0) **Sotring exponent
                 LEA (-20,A0),A4
-                MOVE.L A4,(-20,A0) **Storing mantissa in large
+                MOVE.L A4,(-20,A0) **Storing mantissa
                 
                 
                 BSR Subroutine_1
                 **Stack is now pointing at the top of the stack frame(Where the mantissa is)
                 
                 **Testing if subroutine performed correctly
-                MOVE.W (-12,A0),D0 **sign1
+                MOVE.L (-12,A0),D0 **sign1
                 MOVE.L (-16,A0),D1 **exponent1
                 MOVE.L (-20,A0),D2 **mantissa1
                 
                 
                 **Preparing stack frame for subroutine 1 
                 LINK A5,#-20
+                
                 MOVE.L A2,(-4,A5) **Address of input 2 on stack
                 MOVE.L A3,(-8,A5) **Address of number of exponent bits on stack
                 LEA (-12,A5),A4
-                MOVE.L A4,(-12,A5) **Storing sign in a word
+                MOVE.L A4,(-12,A5) **Storing sign 
                 LEA (-16,A5),A4
-                MOVE.L A4,(-16,A5) **Sotring exponent in large
+                MOVE.L A4,(-16,A5) **Sotring exponent 
                 LEA (-20,A5),A4
-                MOVE.L A4,(-20,A5) **Storing mantissa in large
+                MOVE.L A4,(-20,A5) **Storing mantissa 
                 
                 BSR Subroutine_1
                 
                 **Testing if subroutine performed correctly
-                MOVE.W (-12,A5),D3 **sign2
+                MOVE.L (-12,A5),D3 **sign2
                 MOVE.L (-16,A5),D4 **exponent2
                 MOVE.L (-20,A5),D5 **mantissa2
                 
@@ -174,7 +180,8 @@ POS             ASL.L #2,D5
 
 **Only thing left to do is reconstruct the product
 ** new test sign in D3, exponent in D4, mantissa in D5
-ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
+ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 1
+
                               ASR.L D7,D5
                               ADD.L #127,D4 **Make adding bias general
                               MOVE.B #23,D7 **Shift by number of mantissa bits
@@ -183,9 +190,12 @@ ENDOFSUBROUTINE2              MOVE.B #9,D7 **Shift by number of exponent bits + 
                               ** sign still not done
                               
                               **Should store it in product location in memory
+                              LEA (A6),A6
+                              MOVE.L D5,(A6)
+                              UNLK A5
+                              UNLK A0
+                              MOVEM.L (SP)+,D1-D7/A1-A6
 
-                    UNLK A5
-                    UNLK A0
      
 
 
@@ -260,6 +270,8 @@ START           MOVEA.L #$4000,A7
                 
 
                         
+
+
 
 
 
