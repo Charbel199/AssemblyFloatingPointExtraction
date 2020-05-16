@@ -1,7 +1,7 @@
                 ORG     $1000
-Input_1         DC.L $c479d99a
-Input_2         DC.L $415bd70a
-Exponent_Bits   DC.W $8
+Input_1         DC.L $4000E400
+Input_2         DC.L $40006000
+Exponent_Bits   DC.W $11
 Product         DS.L 1
 Sign_1          DS.W 1
 Exponent_1      DS.L 1
@@ -14,12 +14,12 @@ Mantissa_2      DS.L 1
                 ORG $2000
 Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
 
-                MOVEM.L D1-D4/A1,-(SP) **should store the used ones
+                MOVEM.L D1-D4/A1,-(SP) **Storing used registers on stack
 
-                CLR.L D2 **Clear D2
+                MOVEQ #0,D2 **Clear D2
                 **all LEA +4 since based on A0 (base of stackframe)
 
-                LEA (26,A0),A1 **26 not 24to only get the word
+                LEA (26,A0),A1 
                 MOVE.W (A1),A1 **Original number address
                 MOVE.L (A1),D1 **Original number
                 
@@ -28,16 +28,14 @@ Subroutine_1    LINK A0,#-4 **opening a stack frame maybe for bias
 NEGATIVE        MOVEQ #1,D2 **Storing sign in register
             
                 **Maybe instead of LEA directly move.L to register
-POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
+POSITIVE        LEA (22,A0),A1 
                 MOVE.W (A1),A1 **Number of exponent bits address
                 MOVE.W (A1),D3 ** number of exponent bits
                 
         
                 
-                LEA (18,A0),A1 **18 not 16 to only get the word
-                MOVE.W (A1),A1 **Address for sign
-          
-                
+                LEA (18,A0),A1 
+                MOVE.W (A1),A1 **Address for sign                
                 MOVE.W D2,(A1) **Storing sign in memory
              
                 
@@ -59,7 +57,7 @@ POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 ASL.L D3,D2 **2^(number of exponent bits -1)-1
                 SUB.L #1,D2 **D2 is the bias
                 
-                        **          D2 has now the the bias MAYBE STORE IT IN LINK ?
+                        **          D2 has now the the bias 
                                                                                 
                 MOVE.L D1,(-4,A0) **Duplicating original number and storing it in the stack frame
           
@@ -68,9 +66,8 @@ POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 ASL.L D3,D1 **D6 is our final mantissa (Shifted the mantissa to the left by the number of exponents bits + 1     
 
                                       
-                LEA (10,A0),A1 **6 not 4 to only get the word
-                MOVE.W (A1),A1
-                
+                LEA (10,A0),A1 
+                MOVE.W (A1),A1     
                 MOVE.L D1,(A1) **Mantissa stored
                 
                 
@@ -80,26 +77,24 @@ POSITIVE        LEA (22,A0),A1 **22 not 20 to only get the word
                 ASR.L D4,D1 **Moving our exponent by the number of mantissa bits to the right
                 SUB.L D2,D1 **Removing the bias from it
                 
-                LEA (14,A0),A1 **14 not 12 to only get the word
-                MOVE.W (A1),A1
-                
+                LEA (14,A0),A1 
+                MOVE.W (A1),A1               
                 MOVE.L D1,(A1) **Exponent stored
                 
-                MOVEM.L (SP)+,D1-D4/A1
+                MOVEM.L (SP)+,D1-D4/A1 **Restoing used registers
                 UNLK A0
                 RTS            
                
                
- **TEST: Store bias in stack frame and reuse D2              
                
                
                
                
                
                
-               **Shouldn't forget to store registers
+
                 ORG $3000
-Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
+Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **Storing used registers on stack
 
                 MOVEA.L (68,SP),A1 **Address of Input 1
                 MOVEA.L (64,SP),A2 **Address of Input 2
@@ -151,18 +146,17 @@ Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
                 
                 **Logic of multiplication:
                 
-                EOR.B D0,D3           
-                ADD.L D1,D4
+                EOR.B D0,D3         **getting sign   
+                ADD.L D1,D4         **getting exponent (Before normalization if needed)
+                
                 
                 **Shifted by 1 to add the hidden bit, then shifted by 16 (To take a word space)
                 ASR.L #1,D2
                 ASR.L #1,D5
                 OR.L #$80000000,D2
                 OR.L #$80000000,D5
-                
-                
-                
-                MOVE.B #16,D7
+   
+                MOVEQ #16,D7
                 ASR.L D7,D2
                 ASR.L D7,D5
                 
@@ -170,7 +164,9 @@ Subroutine_2    MOVEM.L D1-D7/A1-A6,-(SP) **should store the used ones
                 
                 
                 MULU D2,D5
-                BPL POS
+                **Normalization:  
+                
+                BPL.S POS
 NEG             ASL.L #1,D5
                 ADD.L #1,D4
                 BRA ENDOFSUBROUTINE2
@@ -196,7 +192,9 @@ ENDOFSUBROUTINE2              ASR.L #1,D5
 
                           
                               ADD.L D2,D4 **Adding the bias to the exponent
-                              
+                            
+                        
+                            
                               MOVEQ #30,D1
                               SUB.L D7, D1 **30 - (number of exponent bits - 1) = number of mantissa bits
                                             **D1 has now the number of mantissa bits
@@ -208,15 +206,15 @@ ENDOFSUBROUTINE2              ASR.L #1,D5
                               
                               **Checking the sign
                               TST.L D3
-                              BEQ STOREINMEMORY
+                              BEQ.S STOREINMEMORY
                               OR.L #$80000000,D5
+                              **Moving product to memory
                               
-                              **Should store it in product location in memory
-STOREINMEMORY                 LEA (A6),A6
+STOREINMEMORY                 
                               MOVE.L D5,(A6)
                               UNLK A5
                               UNLK A0
-                              MOVEM.L (SP)+,D1-D7/A1-A6
+                              MOVEM.L (SP)+,D1-D7/A1-A6 **Restoing used registers
 
      
 
@@ -244,54 +242,46 @@ STOREINMEMORY                 LEA (A6),A6
 
 
 
-
+**Main:
 
                 ORG $400
 
+                
+MAIN           
 
-START           MOVEA.L #$4000,A7
+
+
+                
                 PEA Input_1
                 PEA Exponent_Bits
                 PEA Sign_1
                 PEA Exponent_1
                 PEA Mantissa_1
-                
-                **Testing if registers are still the same
-                MOVE.L #$12309,D1 
-                MOVE.L #$1234,D2
-                MOVE.L #$1234,D3
-                MOVE.L #$1234,D4
-                MOVEA.L #$1230,A1
-                
-                
                 BSR Subroutine_1
                 LEA ($14,SP),SP
-                **Stack pointer back to normal
-                
-                
-                
-                **PART 2:
-                
-                
-                MOVEA.L #$5000,A7
-                PEA Input_1
-                PEA Input_2
-                PEA Exponent_Bits
-                PEA Product
-                BSR Subroutine_2
-                **Return stack as it was
-                LEA ($10,SP),SP
-                **Stack pointer back to normal
+               ** Stack pointer back to normal
 
 
 
 
 
-                END START
+                END MAIN
                 
                 
 
                         
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
